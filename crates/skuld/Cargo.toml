@@ -1,0 +1,19 @@
+[package]
+name = "skuld"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = { version = "0.4.35", optional = true }
+itertools = { version = "0.12.1", optional = true }
+log = { version = "0.4.21", features = ["std"], optional = true }
+syn = { version = "2.0.58", features = ["full"] }
+thiserror = { git = "https://github.com/OnlyCS/thiserror.git", optional = true }
+
+[features]
+default = ["facade", "bail", "location", "error"]
+bail = []
+location = []
+error = ["thiserror"]
+facade = ["thiserror", "chrono", "log", "itertools"]
+lib = ["bail", "location", "error"]

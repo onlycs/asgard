@@ -1,0 +1,17 @@
+[package]
+name = "hermod"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-std = "1.12.0"
+futures = "0.3.30"
+log = "0.4.21"
+
+[dev-dependencies]
+lazy_static = "1.4.0"
+
+[features]
+default = ["events", "queue"]
+events = []
+queue = []
