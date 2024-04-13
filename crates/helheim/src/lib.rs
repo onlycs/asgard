@@ -1,3 +1,22 @@
+//! # Helheim
+//!
+//! Basically just a Display implementation, but for warnings. Works like `thiserror`. Wraps the `log` crate
+//!
+//! ## Example
+//! ```
+//! use helheim::Warning;
+//!
+//! #[derive(Warning)]
+//! enum MyWarning {
+//!    #[warning("Something went wrong")]
+//!    Something,
+//! }
+//!
+//! let warning = MyWarning::Something;
+//!
+//! warning.emit(); // log::warn!("Something went wrong");
+//! ```
+
 extern crate proc_macro;
 extern crate proc_macro2;
 extern crate quote;
@@ -122,24 +141,6 @@ fn helheim(input: DeriveInput) -> Result<TokenStream> {
     })
 }
 
-/// # Helheim
-///
-/// Basically just a Display implementation, but for warnings. Works like `thiserror`. Wraps the `log` crate
-///
-/// ## Example
-/// ```
-/// use helheim::Warning;
-///
-/// #[derive(Warning)]
-/// enum MyWarning {
-///    #[warning("Something went wrong")]
-///    Something,
-/// }
-///
-/// let warning = MyWarning::Something;
-///
-/// warning.emit(); // log::warn!("Something went wrong");
-/// ```
 #[proc_macro_derive(Warning, attributes(warning))]
 pub fn warning(input: StdTokenStream) -> StdTokenStream {
     helheim(parse_macro_input!(input as DeriveInput))

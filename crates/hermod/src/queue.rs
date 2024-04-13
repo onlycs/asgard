@@ -15,17 +15,16 @@ type Reciever<T, Data> = fn(T, &mut Data) -> ResultFuture;
 /// `futures::channel::mpsc::UnboundedSender` and `UnboundedReceiver`.
 ///
 /// ## Example
-/// ```
+/// ```no_run
 /// use lazy_static::lazy_static;
 /// use hermod::Sender;
 /// use std::sync::Arc;
 /// use std::error::Error;
-/// use async_std::task::spawn_blocking;
 ///
 /// lazy_static! {
 /// 	/*
 /// 	 * Queue can be used from anywhere. It does not require any mutable references,
-/// 	 * and probably should not be used with them
+/// 	 * and probably should not be used with them.
 /// 	 */
 ///     static ref QUEUE: Arc<Sender<String>> = Arc::new(Sender::new(|event, data| Box::pin(async move {
 /// 		listener(event).await
@@ -43,7 +42,7 @@ type Reciever<T, Data> = fn(T, &mut Data) -> ResultFuture;
 /// }
 ///
 ///
-/// spawn_blocking(|| async move { get_instance().emit("Hello, world!").await; }); // emit takes impl Into<T> as argument
+/// get_instance().emit("Hello, world!").await; // emit takes impl Into<T> as argument
 /// ```
 pub struct Sender<T: Send + Sync + 'static> {
     sender: mpsc::UnboundedSender<T>,

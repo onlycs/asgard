@@ -25,7 +25,7 @@ pub enum CreateLoggerError {
 }
 
 #[derive(Error, Debug)]
-pub enum WriteFileError<'a> {
+pub(crate) enum WriteFileError<'a> {
     #[error("At {location}: IO error: {error}")]
     IO {
         #[from]
