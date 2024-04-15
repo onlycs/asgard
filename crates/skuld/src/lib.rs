@@ -2,10 +2,12 @@
 //!
 //! Error and logging utility crate
 //! Includes the following:
-//!  - `bail`: A macro to return an error from a function
-//!  - `location`: A macro to get the location of the call (i.e. a tuple with (file!(), line!(),
-//!    column!())
+//!  - `bail!`: A macro to return an error from a function
+//!  - `location!`: Get the full location information of the call (using file/line/column macros)
 //!  - `SkuldLogger`: A `log` crate facade that writes to the disk.
+
+#[cfg(feature = "location")]
+use std::fmt;
 
 #[cfg(feature = "facade")]
 mod logger;
@@ -47,14 +49,35 @@ macro_rules! bail {
     };
 }
 
+/// `ProvideLocation`
+///
+/// Similar to `std::panic::Location,` but without lifetimes and we can instantiate
+/// it manually.
+#[cfg(feature = "location")]
+pub struct ProvideLocation(&'static str, u32, u32);
+
+#[cfg(feature = "location")]
+impl fmt::Display for ProvideLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}:{}", self.0, self.1, self.2)
+    }
+}
+
+#[cfg(feature = "location")]
+impl fmt::Debug for ProvideLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <Self as fmt::Display>::fmt(self, f)
+    }
+}
+
 /// # location! macro
 ///
-/// Tuple with `(file!(), line!(), column!())`
+/// returns a `skuld::ProvideLocation`
 #[cfg(feature = "location")]
 #[macro_export]
 macro_rules! location {
     () => {
-        (::core::file!(), ::core::line!(), ::core::column!())
+        ::skuld::ProvideLocation(::core::file!(), ::core::line!(), ::core::column!())
     };
 }
 
