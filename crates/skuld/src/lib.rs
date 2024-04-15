@@ -57,6 +57,13 @@ macro_rules! bail {
 pub struct ProvideLocation(&'static str, u32, u32);
 
 #[cfg(feature = "location")]
+impl ProvideLocation {
+    pub fn new(f: &'static str, l: u32, c: u32) -> Self {
+        Self(f, l, c)
+    }
+}
+
+#[cfg(feature = "location")]
 impl fmt::Display for ProvideLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}:{}", self.0, self.1, self.2)
@@ -77,7 +84,7 @@ impl fmt::Debug for ProvideLocation {
 #[macro_export]
 macro_rules! location {
     () => {
-        ::skuld::ProvideLocation(::core::file!(), ::core::line!(), ::core::column!())
+        ::skuld::ProvideLocation::new(::core::file!(), ::core::line!(), ::core::column!())
     };
 }
 
