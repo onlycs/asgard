@@ -6,7 +6,6 @@ use futures::{
     future::BoxFuture,
     SinkExt,
 };
-use std::error::Error;
 
 type Response<R> = BoxFuture<'static, R>;
 type Reciever<T, Data, R> = fn(T, &mut Data) -> Response<R>;
@@ -51,7 +50,7 @@ where
     T: Send + Sync + 'static,
     R: Send + Sync + 'static,
 {
-    sender: MSend<(T, MRecv<R>)>,
+    sender: MSend<(T, MSend<R>)>,
 }
 
 impl<T, R> Sender<T, R>
@@ -60,12 +59,12 @@ where
     R: Send + Sync + 'static,
 {
     pub fn new<D: Send + Sync + 'static>(listener: Reciever<T, D, R>, data: D) -> Self {
-        let (sender, mut receiver) = mpsc::unbounded();
+        let (sender, mut receiver) = mpsc::unbounded::<(T, MSend<R>)>();
 
         async_std::task::spawn(async move {
             let mut data = data;
 
-            while let Some((event, sender)) = receiver.next().await {
+            while let Some((event, mut sender)) = receiver.next().await {
                 let res = listener(event, &mut data).await;
 
                 if let Err(e) = sender.send(res).await {
@@ -77,7 +76,7 @@ where
         Sender { sender }
     }
 
-    pub async fn emit(self: Arc<Self>, event: impl Into<T>) -> Result<MRecv<T>, SendError> {
+    pub async fn emit(self: Arc<Self>, event: impl Into<T>) -> Result<MRecv<R>, SendError> {
         let (sender, receiver) = mpsc::unbounded();
         self.sender.clone().send((event.into(), sender)).await?;
 
@@ -87,7 +86,7 @@ where
     pub async fn emit_responseless(self: Arc<Self>, event: impl Into<T>) -> Result<(), SendError> {
         self.sender
             .clone()
-            .send((event.into(), mpsc::unbounded().1))
+            .send((event.into(), mpsc::unbounded().0))
             .await
     }
 }
