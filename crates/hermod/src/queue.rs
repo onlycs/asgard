@@ -1,7 +1,8 @@
 use async_std::{stream::StreamExt, sync::Arc};
 use futures::{
     channel::mpsc::{self, SendError, UnboundedReceiver as MRecv, UnboundedSender as MSend},
-    Future, SinkExt,
+    future::BoxFuture,
+    SinkExt,
 };
 
 /// # Sender
@@ -12,32 +13,30 @@ use futures::{
 /// fails).
 ///
 /// ## Example
-/// ```no_run
+/// ```
 /// use lazy_static::lazy_static;
-/// use hermod::Sender;
 /// use std::sync::Arc;
-/// use std::error::Error;
+/// use hermod::Sender;
+/// use async_std::stream::StreamExt;
 ///
 /// lazy_static! {
-///     static ref QUEUE: Arc<Sender<String>> = Arc::new(Sender::new(|event, data| Box::pin(async move {
-/// 		listener(event).await
-/// 	}), 0u32));
+///     static ref QUEUE: Arc<Sender<String, u32>> = Arc::new(Sender::new(
+///         |event, uref| Box::pin(async move {
+///             *uref += 1;
+///             println!("{event}");
+///             0
+///         }), 0u32
+///     ));
 /// }
 ///
-/// async fn listener(event: String) -> bool {
-/// 	assert_eq!(event, "Hello, world!");
-/// 	Ok(true)
+/// async fn asy_main() {
+///     let queue = Arc::clone(&QUEUE);
+///
+///     let mut res = queue.emit("Hello, world!".to_string()).await.unwrap();
+///     assert_eq!(res.next().await.unwrap(), 0);
 /// }
 ///
-/// pub fn get_instance() -> Arc<Sender<String>> {
-///     Arc::clone(&QUEUE)
-/// }
-///
-///
-/// let recv: mspc::UnboundedReciever<bool> = get_instance().emit("Hello, world!").await; // emit takes impl Into<T> as argument
-/// let mut res = recv.next().await.unwrap();
-///
-/// assert_eq!(res, true);
+/// async_std::task::block_on(asy_main());
 /// ```
 pub struct Sender<T, R>
 where
@@ -52,17 +51,17 @@ where
     T: Send + Sync + 'static,
     R: Send + Sync + 'static,
 {
-    pub fn new<D: Send + Sync + 'static, F>(listener: fn(T, &mut D) -> F, data: D) -> Self
-    where
-        F: Future<Output = R> + Send + Sync + 'static,
-    {
+    pub fn new<D: Send + Sync + 'static>(
+        listener: for<'a> fn(T, &'a mut D) -> BoxFuture<'a, R>,
+        data: D,
+    ) -> Self {
         let (sender, mut receiver) = mpsc::unbounded::<(T, MSend<R>)>();
 
         async_std::task::spawn(async move {
             let mut data = data;
 
             while let Some((event, mut sender)) = receiver.next().await {
-                let res = (|| listener(event, &mut data))().await;
+                let res = listener(event, &mut data).await;
 
                 if let Err(e) = sender.send(res).await {
                     eprintln!("Error sending response: {:?}", e);
