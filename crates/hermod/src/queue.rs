@@ -1,18 +1,22 @@
 use async_std::{stream::StreamExt, sync::Arc};
 use futures::{
-    channel::mpsc::{self, SendError},
+    channel::mpsc::{
+        self, SendError, {UnboundedReceiver as MRecv, UnboundedSender as MSend},
+    },
     future::BoxFuture,
     SinkExt,
 };
 use std::error::Error;
 
-type ResultFuture = BoxFuture<'static, Result<(), Box<dyn Error>>>;
-type Reciever<T, Data> = fn(T, &mut Data) -> ResultFuture;
+type Response<R> = BoxFuture<'static, R>;
+type Reciever<T, Data, R> = fn(T, &mut Data) -> Response<R>;
 
 /// # Sender
 ///
 /// A queue that can be used from anywhere. Wrapper for
-/// `futures::channel::mpsc::UnboundedSender` and `UnboundedReceiver`.
+/// `futures::channel::mpsc::UnboundedSender` and `UnboundedReceiver`. Calling `.emit()` returns
+/// an `UnboundedReciever` when `Ok`. It will recieve one event, and then close (unless sending
+/// fails).
 ///
 /// ## Example
 /// ```no_run
@@ -22,19 +26,14 @@ type Reciever<T, Data> = fn(T, &mut Data) -> ResultFuture;
 /// use std::error::Error;
 ///
 /// lazy_static! {
-/// 	/*
-/// 	 * Queue can be used from anywhere. It does not require any mutable references,
-/// 	 * and probably should not be used with them.
-/// 	 */
 ///     static ref QUEUE: Arc<Sender<String>> = Arc::new(Sender::new(|event, data| Box::pin(async move {
 /// 		listener(event).await
 /// 	}), 0u32));
 /// }
 ///
-/// async fn listener(event: String) -> Result<(), Box<dyn Error>> {
+/// async fn listener(event: String) -> bool {
 /// 	assert_eq!(event, "Hello, world!");
-///
-/// 	Ok(())
+/// 	Ok(true)
 /// }
 ///
 /// pub fn get_instance() -> Arc<Sender<String>> {
@@ -42,26 +41,35 @@ type Reciever<T, Data> = fn(T, &mut Data) -> ResultFuture;
 /// }
 ///
 ///
-/// get_instance().emit("Hello, world!").await; // emit takes impl Into<T> as argument
+/// let recv: mspc::UnboundedReciever<bool> = get_instance().emit("Hello, world!").await; // emit takes impl Into<T> as argument
+/// let mut res = recv.next().await.unwrap();
+///
+/// assert_eq!(res, true);
 /// ```
-pub struct Sender<T: Send + Sync + 'static> {
-    sender: mpsc::UnboundedSender<T>,
-}
-
-impl<T> Sender<T>
+pub struct Sender<T, R>
 where
     T: Send + Sync + 'static,
+    R: Send + Sync + 'static,
 {
-    pub fn new<D: Send + Sync + 'static>(listener: Reciever<T, D>, data: D) -> Self {
+    sender: MSend<(T, MRecv<R>)>,
+}
+
+impl<T, R> Sender<T, R>
+where
+    T: Send + Sync + 'static,
+    R: Send + Sync + 'static,
+{
+    pub fn new<D: Send + Sync + 'static>(listener: Reciever<T, D, R>, data: D) -> Self {
         let (sender, mut receiver) = mpsc::unbounded();
 
         async_std::task::spawn(async move {
             let mut data = data;
 
-            while let Some(event) = receiver.next().await {
-                if let Err(e) = listener(event, &mut data).await {
-                    log::error!("Error while handling event: {}", e);
-                    continue;
+            while let Some((event, sender)) = receiver.next().await {
+                let res = listener(event, &mut data).await;
+
+                if let Err(e) = sender.send(res).await {
+                    eprintln!("Error sending response: {:?}", e);
                 }
             }
         });
@@ -69,7 +77,17 @@ where
         Sender { sender }
     }
 
-    pub async fn emit(self: Arc<Self>, event: impl Into<T>) -> Result<(), SendError> {
-        self.sender.clone().send(event.into()).await
+    pub async fn emit(self: Arc<Self>, event: impl Into<T>) -> Result<MRecv<T>, SendError> {
+        let (sender, receiver) = mpsc::unbounded();
+        self.sender.clone().send((event.into(), sender)).await?;
+
+        Ok(receiver)
+    }
+
+    pub async fn emit_responseless(self: Arc<Self>, event: impl Into<T>) -> Result<(), SendError> {
+        self.sender
+            .clone()
+            .send((event.into(), mpsc::unbounded().1))
+            .await
     }
 }
