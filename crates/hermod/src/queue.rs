@@ -62,7 +62,7 @@ where
             let mut data = data;
 
             while let Some((event, mut sender)) = receiver.next().await {
-                let res = listener(event, &mut data).await;
+                let res = (|| listener(event, &mut data))().await;
 
                 if let Err(e) = sender.send(res).await {
                     eprintln!("Error sending response: {:?}", e);
