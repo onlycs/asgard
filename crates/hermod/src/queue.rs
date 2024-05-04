@@ -1,14 +1,8 @@
 use async_std::{stream::StreamExt, sync::Arc};
 use futures::{
-    channel::mpsc::{
-        self, SendError, {UnboundedReceiver as MRecv, UnboundedSender as MSend},
-    },
-    future::BoxFuture,
-    SinkExt,
+    channel::mpsc::{self, SendError, UnboundedReceiver as MRecv, UnboundedSender as MSend},
+    Future, SinkExt,
 };
-
-type Response<R> = BoxFuture<'static, R>;
-type Reciever<T, Data, R> = fn(T, &mut Data) -> Response<R>;
 
 /// # Sender
 ///
@@ -58,7 +52,10 @@ where
     T: Send + Sync + 'static,
     R: Send + Sync + 'static,
 {
-    pub fn new<D: Send + Sync + 'static>(listener: Reciever<T, D, R>, data: D) -> Self {
+    pub fn new<D: Send + Sync + 'static, F>(listener: fn(T, &mut D) -> F, data: D) -> Self
+    where
+        F: Future<Output = R> + Send + Sync + 'static,
+    {
         let (sender, mut receiver) = mpsc::unbounded::<(T, MSend<R>)>();
 
         async_std::task::spawn(async move {
