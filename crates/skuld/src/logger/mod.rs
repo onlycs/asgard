@@ -11,7 +11,7 @@ use itertools::Itertools;
 use log::LevelFilter;
 use std::{
     collections::HashMap,
-    fs::File,
+    fs::{File, OpenOptions},
     io::Write,
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -20,13 +20,16 @@ use std::{
 pub struct SkuldLogger {
     level: LevelFilter,
     modules: HashMap<String, LevelFilter>,
-    file: Arc<Mutex<File>>,
     date_fmt: &'static str,
 }
 
 impl SkuldLogger {
-    pub fn new(path: PathBuf) -> Result<Self, CreateLoggerError> {
-        let file = File::open(path.clone()).or_else(|_| File::create_new(path))?;
+    pub async fn new(path: PathBuf) -> Result<Self, CreateLoggerError> {
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(true)
+            .open(path)?;
 
         Ok(SkuldLogger {
             level: LevelFilter::Info,
@@ -70,7 +73,7 @@ impl SkuldLogger {
         let mut file = self.file.lock()?;
         file.write_all(message.as_bytes())?;
 
-        Ok(())
+        std::fs::Ok(())
     }
 
     fn flush(&self) -> Result<(), WriteFileError<'_>> {
