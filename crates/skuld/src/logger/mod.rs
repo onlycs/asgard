@@ -21,6 +21,7 @@ pub struct SkuldLogger {
     level: LevelFilter,
     modules: HashMap<String, LevelFilter>,
     date_fmt: &'static str,
+    file: Arc<Mutex<File>>,
 }
 
 impl SkuldLogger {
