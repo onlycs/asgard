@@ -73,7 +73,7 @@ impl SkuldLogger {
         let mut file = self.file.lock()?;
         file.write_all(message.as_bytes())?;
 
-        std::fs::Ok(())
+        Ok(())
     }
 
     fn flush(&self) -> Result<(), WriteFileError<'_>> {
