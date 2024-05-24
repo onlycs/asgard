@@ -25,7 +25,7 @@ pub struct SkuldLogger {
 }
 
 impl SkuldLogger {
-    pub async fn new(path: PathBuf) -> Result<Self, CreateLoggerError> {
+    pub fn new(path: PathBuf) -> Result<Self, CreateLoggerError> {
         let file = File::open(path.clone()).or_else(|_| File::create_new(path))?;
 
         Ok(SkuldLogger {
