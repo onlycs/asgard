@@ -6,11 +6,13 @@ extern crate thiserror;
 mod error;
 mod pretty;
 
+use chrono::Local;
 use error::*;
 use itertools::Itertools;
 use log::LevelFilter;
 use std::{
     collections::HashMap,
+    fmt::Arguments,
     fs::{File, OpenOptions},
     io::Write,
     path::PathBuf,
@@ -20,12 +22,12 @@ use std::{
 pub struct SkuldLogger {
     level: LevelFilter,
     modules: HashMap<String, LevelFilter>,
-    date_fmt: &'static str,
+    fmt: &'static str,
     file: Arc<Mutex<File>>,
 }
 
 impl SkuldLogger {
-    pub async fn new(path: PathBuf) -> Result<Self, CreateLoggerError> {
+    pub fn new(path: PathBuf) -> Result<Self, CreateLoggerError> {
         let file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -36,7 +38,7 @@ impl SkuldLogger {
             level: LevelFilter::Info,
             modules: HashMap::new(),
             file: Arc::new(Mutex::new(file)),
-            date_fmt: "%Y-%m-%d %l:%M:%S%.3f %p",
+            fmt: "%Y-%m-%d %l:%M:%S%.3f %p",
         })
     }
 
@@ -60,7 +62,7 @@ impl SkuldLogger {
     }
 
     pub fn date_fmt(mut self, date_fmt: &'static str) -> Self {
-        self.date_fmt = date_fmt;
+        self.fmt = date_fmt;
         self
     }
 
@@ -83,6 +85,16 @@ impl SkuldLogger {
 
         Ok(())
     }
+
+    fn multiline_message(args: &Arguments) -> String {
+        let msg = args.to_string().trim().to_string();
+
+        if msg.contains("\n") {
+            msg.split("\n").map(|s| format!("\t{s}")).join("\n")
+        } else {
+            msg
+        }
+    }
 }
 
 impl log::Log for SkuldLogger {
@@ -95,29 +107,20 @@ impl log::Log for SkuldLogger {
             return;
         }
 
-        let mut message = record.args().to_string();
-
-        if message.contains("\n") {
-            message = message.split("\n").map(|s| format!("\t{s}")).join("\n");
-        }
+        let time = Local::now().format(self.fmt).to_string().trim().to_string();
+        let level = record.level();
+        let module = record.target();
+        let message = SkuldLogger::multiline_message(record.args());
 
         let formatted = {
-            let time = chrono::Local::now().format(self.date_fmt).to_string();
-            let level = pretty::level(record.level());
-            let module = pretty::bold(record.target().to_string());
             let message = pretty::light(&message);
+            let level = pretty::level(level);
+            let module = pretty::bold(module);
 
             format!("{time} {level} [{module}] {message}\n")
         };
 
-        let unformatted = {
-            let time = chrono::Local::now().format(self.date_fmt).to_string();
-            let level = record.level();
-            let module = record.target();
-            let message = &message;
-
-            format!("{time} {level} [{module}] {message}\n")
-        };
+        let unformatted = format!("{time} {level} [{module}] {message}\n");
 
         print!("{}", formatted);
         self.write(unformatted).unwrap();

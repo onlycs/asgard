@@ -10,6 +10,9 @@ log = { version = "0.4.21", features = ["std"], optional = true }
 syn = { version = "2.0.58", features = ["full"] }
 thiserror = { git = "https://github.com/OnlyCS/thiserror.git", optional = true }
 
+[dev-dependencies]
+async-std = "1.12.0"
+
 [features]
 default = ["facade", "bail", "location", "error"]
 bail = []

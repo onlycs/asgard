@@ -1,0 +1,8 @@
+2024-05-27  4:04:11.984 PM INFO [skuld::tests] Hello, world!
+2024-05-27  4:04:11.985 PM ERROR [skuld::tests] Hello, world!
+2024-05-27  4:04:11.985 PM WARN [skuld::tests] Hello, world!
+2024-05-27  4:04:11.986 PM DEBUG [skuld::tests] Hello, world!
+2024-05-27  4:04:28.482 PM INFO [skuld::tests] Hello, world!
+2024-05-27  4:04:28.482 PM ERROR [skuld::tests] Hello, world!
+2024-05-27  4:04:28.482 PM WARN [skuld::tests] Hello, world!
+2024-05-27  4:04:28.483 PM DEBUG [skuld::tests] Hello, world!

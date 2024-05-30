@@ -12,6 +12,9 @@ use std::fmt;
 #[cfg(feature = "facade")]
 mod logger;
 
+#[cfg(test)]
+mod tests;
+
 /// # bail! macro
 ///
 /// A simple macro to return an error from a function. Runs .into() for you!

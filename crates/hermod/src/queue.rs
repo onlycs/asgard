@@ -2,7 +2,7 @@ use async_std::{stream::StreamExt, sync::Arc};
 use futures::{
     channel::mpsc::{self, SendError, UnboundedReceiver as MRecv, UnboundedSender as MSend},
     future::BoxFuture,
-    SinkExt,
+    SinkExt, StreamExt,
 };
 
 /// # Sender
