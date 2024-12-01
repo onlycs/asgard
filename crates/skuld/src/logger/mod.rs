@@ -99,7 +99,13 @@ impl SkuldLogger {
 
 impl log::Log for SkuldLogger {
     fn enabled(&self, meta: &log::Metadata) -> bool {
-        meta.level() <= self.max_level()
+        meta.level()
+            <= *self
+                .modules
+                .iter()
+                .find(|(name, _level)| meta.target().starts_with(*name))
+                .map(|(_name, level)| level)
+                .unwrap_or(&self.level)
     }
 
     fn log(&self, record: &log::Record) {
