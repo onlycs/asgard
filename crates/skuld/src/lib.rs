@@ -93,3 +93,11 @@ macro_rules! location {
 
 #[cfg(feature = "facade")]
 pub use logger::prelude as log;
+
+#[cfg(feature = "result")]
+#[macro_export]
+macro_rules! result {
+    ($err:ty) => {
+        type Result<T, E = $err> = std::result::Result<T, E>;
+    };
+}
